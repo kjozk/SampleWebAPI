@@ -100,6 +100,8 @@ curl -X DELETE http://localhost:5000/users/testuser -H "Authorization: Bearer <�
 
 #### 足し算
 
+Windows PowerShell:
+
 ```shell
 Invoke-WebRequest -Uri http://localhost:5000/add `
   -Method POST `
@@ -108,4 +110,50 @@ Invoke-WebRequest -Uri http://localhost:5000/add `
       "Authorization" = "Bearer $accessToken" 
   } `
   -Body '{ "a": 10, "b": 20 }'
+```
+
+Python:
+
+```python
+import requests
+
+BASE_URL = "http://localhost:5000"
+
+def login_user(username, password):
+    url = f"{BASE_URL}/auth/login"
+    payload = {
+        "username": username,
+        "password": password
+    }
+    r = requests.post(url, json=payload)
+    if r.status_code == 200:
+        data = r.json()
+        access_token = data["data"]["access_token"]
+        print("Login successful. Access token:", access_token)
+        return access_token
+    else:
+        print(f"Login failed: {r.status_code} {r.text}")
+        return None
+
+def add_numbers(token, a, b):
+    url = f"{BASE_URL}/add"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+    payload = {"a": a, "b": b}
+    r = requests.post(url, json=payload, headers=headers)
+    if r.status_code == 200:
+        print("Addition result:", r.json()["result"])
+    else:
+        print(f"Addition API error: {r.status_code} {r.text}")
+
+if __name__ == "__main__":
+    username = "testuser"
+    password = "pass1234"
+
+    token = login_user(username, password)
+
+    if token:
+        add_numbers(token, 10, 20)
 ```
