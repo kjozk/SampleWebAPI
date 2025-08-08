@@ -16,17 +16,20 @@ def login():
     if not ok:
         return make_response(False, "認証失敗"), 401
 
-    access_token = create_access_token(identity=user.username, additional_claims={
-        "permissions": user.permissions,
-        "is_admin": user.is_admin
-    })
+    user_permissions = {
+        "can_addition": user.can_addition,
+        "can_trigonometry": user.can_trigonometry,
+        "can_logarithm": user.can_logarithm,
+    }
+    granted_permissions = [key for key, val in user_permissions.items() if val]
+    additional_claims = user_permissions
+    access_token = create_access_token(identity=user.username, additional_claims=additional_claims)
     refresh_token = create_refresh_token(identity=user.username)
 
     return make_response(True, "認証成功", {
         "access_token": access_token,
         "refresh_token": refresh_token,
-        "permissions": user.permissions,
-        "is_admin": user.is_admin
+        "permissions": granted_permissions,
     })
 
 # 登録

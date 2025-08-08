@@ -3,10 +3,12 @@ from extensions import db
 
 class UserService:
     @staticmethod
-    def create_user(username, password, permissions="read", is_admin=False):
+    def create_user(username, password):
         if User.query.filter_by(username=username).first():
             return False, "ユーザー名は既に存在します"
-        user = User(username=username, permissions=permissions, is_admin=is_admin)
+        user = User(username=username)
+        user.can_addition = True
+        user.can_trigonometry = False
         user.set_password(password)
         db.session.add(user)
         db.session.commit()

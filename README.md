@@ -44,7 +44,7 @@ source venv/bin/activate
 python app.py
 ```
 
-## API実行サンプル（curl）
+## API実行サンプル
 
 ### 1. ユーザー登録
 
