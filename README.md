@@ -72,8 +72,15 @@ $response = Invoke-WebRequest -Uri http://localhost:5000/auth/login `
   -Method POST `
   -Headers @{ "Content-Type" = "application/json" } `
   -Body '{ "username": "testuser", "password": "pass1234" }'
+
 $data = $response.Content | ConvertFrom-Json
-$accessToken = $data.data.access_token
+
+if ($data.status -eq "success") {
+    $accessToken = $data.data.access_token
+    Write-Host "ログイン成功！
+} else {
+    Write-Host "ログイン失敗: $($data.message)" -ForegroundColor Red
+}
 ```
 
 Linux/macOS (bash):
@@ -103,13 +110,21 @@ curl -X DELETE http://localhost:5000/users/testuser -H "Authorization: Bearer <�
 Windows PowerShell:
 
 ```shell
-Invoke-WebRequest -Uri http://localhost:5000/add `
+$response = Invoke-WebRequest -Uri http://localhost:5000/add `
   -Method POST `
   -Headers @{ 
       "Content-Type" = "application/json"; 
       "Authorization" = "Bearer $accessToken" 
   } `
-  -Body '{ "a": 10, "b": 20 }'
+  -Body '{ "a": 10, "b": 20 }' `
+  
+$data = $response.Content | ConvertFrom-Json
+
+if ($data.status -eq "success") {
+    Write-Host "計算成功！結果は $($data.result) です。"
+} else {
+    Write-Host "計算失敗: $($data.message)" -ForegroundColor Red
+}
 ```
 
 Python:

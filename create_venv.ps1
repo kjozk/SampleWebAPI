@@ -22,6 +22,6 @@ Write-Host "pipを最新にアップグレードします..."
 pip install --upgrade pip
 
 Write-Host "必要パッケージをインストールします..."
-pip install flask flask_sqlalchemy flask_jwt_extended werkzeug
+pip install flask flask_sqlalchemy flask_jwt_extended werkzeug markdown
 
 Write-Host "準備完了です。"

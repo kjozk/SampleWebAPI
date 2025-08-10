@@ -7,7 +7,7 @@ class UserService:
         if User.query.filter_by(username=username).first():
             return False, "ユーザー名は既に存在します"
         user = User(username=username)
-        user.can_addition = True
+        user.can_arithmetic = True
         user.can_trigonometry = False
         user.set_password(password)
         db.session.add(user)

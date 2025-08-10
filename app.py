@@ -6,6 +6,7 @@ from routes.feature_routes import feature_bp
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///users.db"
 app.config["JWT_SECRET_KEY"] = "super-secret"
+app.config["SECRET_KEY"] = "change_this_to_a_long_random_secret"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 # 拡張の初期化

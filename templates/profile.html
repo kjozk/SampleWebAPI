@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8" />
+    <title>ユーザー情報</title>
+    <style>
+        body { font-family: sans-serif; margin: 2em; }
+        ul { list-style: none; padding: 0; }
+        li { margin-bottom: 0.5em; }
+        a.button {
+            display: inline-block;
+            padding: 0.5em 1em;
+            background-color: #28A745;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>{{ username }} さんの情報</h1>
+
+    <h2>保有している権限</h2>
+    <ul>
+        {% for key, value in permissions.items() %}
+            {% if value %}
+                <li>{{ key }}</li>
+            {% endif %}
+        {% else %}
+            <li>権限なし</li>
+        {% endfor %}
+    </ul>
+
+    <a href="{{ url_for('user.change_password') }}" class="button">パスワード変更</a>
+</body>
+</html>

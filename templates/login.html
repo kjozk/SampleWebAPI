@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8" />
+    <title>ログイン</title>
+    <style>
+        body { font-family: sans-serif; margin: 2em; }
+        .error { color: red; }
+        .success { color: green; }
+        form div { margin-bottom: 1em; }
+    </style>
+</head>
+<body>
+    <h1>ログイン</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul>
+          {% for category, message in messages %}
+            <li class="{{ category }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <!-- ログインフォーム -->
+    <form method="post" action="{{ url_for('user.login') }}">
+        <div>
+            <label for="username">ユーザー名:</label><br />
+            <input type="text" name="username" id="username" required
+                value="{{ username | default('') }}" />
+        </div>
+        <div>
+            <label for="password">パスワード:</label><br />
+            <input type="password" name="password" id="password" required />
+        </div>
+        <button type="submit">ログイン</button>
+    </form>
+
+    <p><a href="{{ url_for('user.register_page') }}">新規登録はこちら</a></p>
+</body>
+</html>
