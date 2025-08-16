@@ -2,73 +2,42 @@ from fastapi import APIRouter, HTTPException, Request, Depends, Form, Body, Cook
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from database import get_db
 from services.user_service import UserService
 from models.user import User
 from models.auth_request import AuthRequest
-from jose import JWTError, jwt
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 router = APIRouter()
 
-# JWT設定
-SECRET_KEY = "super-secret-change-this"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
-
 templates = Jinja2Templates(directory="templates")  # HTMLテンプレートの格納フォルダ
-
 
 @router.get("/", response_class=HTMLResponse)
 def login_page(request: Request):
-    messages = []  # ここで必要ならメッセージを追加
+    access_token = request.cookies.get("access_token")
+    
+    if access_token:
+        ok, user = UserService.verify_access_token(access_token)
+        if ok:
+            # トークンが有効ならダッシュボードにリダイレクト
+            return RedirectResponse(url="/dashboard", status_code=303)
+    
+    # トークンがないか無効ならログインページを表示
+    messages = []  # 必要ならメッセージをここで追加
     return templates.TemplateResponse(
         "login.html", {"request": request, "messages": messages}
     )
 
-def create_access_token(data: dict, expires_delta: timedelta = None):
-    to_encode = data.copy()
-    expire = datetime.utcnow() + (
-        expires_delta
-        if expires_delta
-        else timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    )
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-
-
-# --- 認証ユーティリティ ---
-def get_current_user(token: str = Depends(lambda: None), db: Session = Depends(get_db)):
-    if not token:
-        raise HTTPException(status_code=401, detail="トークンが必要です")
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("username")
-        if username is None:
-            raise HTTPException(status_code=401, detail="トークンが無効です")
-    except JWTError:
-        raise HTTPException(status_code=401, detail="トークンが無効です")
-
-    user = db.query(User).filter(User.username == username).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="ユーザーが存在しません")
-    return user, payload
-
-
-def make_response(success: bool, message: str, data=None):
-    return {
-        "status": "success" if success else "error",
-        "message": message,
-        "data": data,
-    }
-
+@router.get("/favicon.ico")
+async def favicon():
+    return FileResponse("static/favicon.ico")
 
 @router.get("/register", response_class=HTMLResponse)
 def register_form(request: Request):
     # ユーザー作成フォームを表示
     return templates.TemplateResponse("register.html", {"request": request})
-
 
 @router.post("/register")
 def register_user(
@@ -156,7 +125,7 @@ def dashboard(request: Request, access_token: str = Cookie(None)):
     if not access_token:
         return RedirectResponse(url="/?error=アクセストークンが見つかりません")
 
-    ok, payload, user = UserService.verify_access_token(access_token)
+    ok, user = UserService.verify_access_token(access_token)
     if not ok:
         return RedirectResponse(url="/?error=認証失敗しました")
 
@@ -166,7 +135,7 @@ def dashboard(request: Request, access_token: str = Cookie(None)):
         "dashboard.html",
         {
             "request": request,
-            "username": payload["username"],
+            "username": user.username,
             "permissions": granted,
         }
     )

@@ -69,7 +69,7 @@ class UserService:
             # ユーザー名を取得
             username = payload.get("username")
             if not username:
-                return False, None, None
+                return False, None
 
             # DB からユーザー取得
             db: Session = SessionLocal()
@@ -79,10 +79,10 @@ class UserService:
                 db.close()
 
             if not user:
-                return False, None, None
+                return False, None
 
             # ユーザー情報を返す
-            return True, payload, user
+            return True, user
 
         except JWTError:
-            return False, None, None
+            return False, None
