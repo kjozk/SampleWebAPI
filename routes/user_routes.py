@@ -1,152 +1,177 @@
-import os
-import markdown
-from flask import Blueprint
-from flask import session, request
-from flask import render_template, redirect, url_for, flash, jsonify
-from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jwt
+from fastapi import APIRouter, HTTPException, Request, Depends, Form, Body, Cookie
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import RedirectResponse
+from sqlalchemy.orm import Session
+from database import get_db
 from services.user_service import UserService
-from models import User
+from models.user import User
+from models.auth_request import AuthRequest
+from jose import JWTError, jwt
+from datetime import datetime, timedelta
 
-user_bp = Blueprint("user", __name__)
+router = APIRouter()
 
-DOCS_PATH = os.path.join(os.path.dirname(__file__), "docs")
+# JWT設定
+SECRET_KEY = "super-secret-change-this"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
-def make_response(success, message, data=None):
-    return jsonify({"status": "success" if success else "error", "message": message, "data": data})
+templates = Jinja2Templates(directory="templates")  # HTMLテンプレートの格納フォルダ
 
-@user_bp.route("/")
-def index():
-    return render_template("index.html")
 
-# ログイン後のユーザー情報ページ
-@user_bp.route("/me")
-@jwt_required()
-def profile():
-    if "username" not in session:
-        return redirect(url_for("user.login_page"))
+@router.get("/", response_class=HTMLResponse)
+def login_page(request: Request):
+    messages = []  # ここで必要ならメッセージを追加
+    return templates.TemplateResponse(
+        "login.html", {"request": request, "messages": messages}
+    )
 
-    username = session["username"]
-    # DBからユーザー情報を取得
-    user = User.query.filter_by(username=username).first()
-    return render_template("profile.html", user=user)
+def create_access_token(data: dict, expires_delta: timedelta = None):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + (
+        expires_delta
+        if expires_delta
+        else timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-# user_bp の中に追加
-@user_bp.route("/login", methods=["GET"])
-def login_page():
-    return render_template("login.html")
 
-# ログイン
-@user_bp.route("/auth/login", methods=["POST"])
-def login():
-    if request.method == "GET":
-        return render_template("login.html")
+# --- 認証ユーティリティ ---
+def get_current_user(token: str = Depends(lambda: None), db: Session = Depends(get_db)):
+    if not token:
+        raise HTTPException(status_code=401, detail="トークンが必要です")
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("username")
+        if username is None:
+            raise HTTPException(status_code=401, detail="トークンが無効です")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="トークンが無効です")
 
-    # Content-Type に応じてデータの取得方法を変える
-    if request.is_json:
-        data = request.get_json()
-        username = data.get("username")
-        password = data.get("password")
-    else:
-        username = request.form.get("username")
-        password = request.form.get("password")
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="ユーザーが存在しません")
+    return user, payload
 
-    ok, user = UserService.authenticate(username, password)
+
+def make_response(success: bool, message: str, data=None):
+    return {
+        "status": "success" if success else "error",
+        "message": message,
+        "data": data,
+    }
+
+
+@router.get("/register", response_class=HTMLResponse)
+def register_form(request: Request):
+    # ユーザー作成フォームを表示
+    return templates.TemplateResponse("register.html", {"request": request})
+
+
+@router.post("/register")
+def register_user(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    password2: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    if password != password2:
+        return templates.TemplateResponse(
+            "register.html",
+            {
+                "request": request,
+                "error": "パスワードが一致しません",
+                "username": username,
+            },
+        )
+
+    ok, msg = UserService.create_user(db, username, password)
     if not ok:
-        flash("認証失敗", "error")
-        return render_template("login.html", username=username), 401
+        return templates.TemplateResponse(
+            "register.html", {"request": request, "error": msg, "username": username}
+        )
+
+    return templates.TemplateResponse(
+        "login.html",
+        {"request": request, "success": "登録成功しました。ログインしてください"},
+    )
+
+# Webフォーム用ログインルート
+@router.post("/login")
+def web_login(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    ok, user = UserService.authenticate(db, username, password)
+    if not ok:
+        return templates.TemplateResponse(
+            "login.html", {"request": request, "error": "認証失敗"}
+        )
+
+    # Cookieにアクセストークンを保存
+    access_token = UserService.create_access_token({"username": user.username})
+    response = RedirectResponse(url="/dashboard", status_code=303)
+    response.set_cookie(key="access_token", value=access_token, httponly=True)
+    return response
+
+@router.get("/logout")
+def logout():
+    response = RedirectResponse(url="/")
+    response.delete_cookie("access_token")
+    return response
+
+# Web API用の認証ルート
+@router.post("/api/auth")
+def api_login(data: AuthRequest, db: Session = Depends(get_db)):
+    ok, user = UserService.authenticate(db, data.username, data.password)
+    if not ok:
+        raise HTTPException(status_code=401, detail="認証失敗")
 
     user_permissions = {
         "can_arithmetic": user.can_arithmetic,
         "can_trigonometry": user.can_trigonometry,
         "can_logarithm": user.can_logarithm,
+        "is_admin": user.is_admin,
     }
-    granted_permissions = [key for key, val in user_permissions.items() if val]
-    additional_claims = user_permissions
-    access_token = create_access_token(identity=user.username, additional_claims=additional_claims)
-    refresh_token = create_refresh_token(identity=user.username)
 
-    session["username"] = user.username
+    access_token = UserService.create_access_token({"username": user.username, **user_permissions})
+    refresh_token = UserService.create_access_token(
+        {"username": user.username, **user_permissions}, expires_delta=timedelta(days=7)
+    )
 
-    # Webフォームの場合はユーザー情報ページへリダイレクト
-    if not request.is_json:
-        flash("ログイン成功", "success")
-        return redirect(url_for("user.profile"))
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "permissions": [k for k, v in user_permissions.items() if v],
+    }
 
-    # APIの場合はJSONで返す
-    return jsonify({
-        "status": "success",
-        "message": "認証成功",
-        "data": {
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "permissions": granted_permissions,
+
+@router.get("/dashboard")
+def dashboard(request: Request, access_token: str = Cookie(None)):
+    if not access_token:
+        return RedirectResponse(url="/?error=アクセストークンが見つかりません")
+
+    ok, payload, user = UserService.verify_access_token(access_token)
+    if not ok:
+        return RedirectResponse(url="/?error=認証失敗しました")
+
+    granted = user.granted_permissions()
+
+    response = templates.TemplateResponse(
+        "dashboard.html",
+        {
+            "request": request,
+            "username": payload["username"],
+            "permissions": granted,
         }
-    })
-
-# 登録
-@user_bp.route("/users", methods=["GET", "POST"])
-def register_page():
-    if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
-        password2 = request.form.get("password2")
-
-        if password != password2:
-            flash("パスワードが一致しません", "error")
-            return render_template("register.html", username=username)
-
-        ok, msg = UserService.create_user(username, password)
-        if ok:
-            flash("登録成功しました。ログインしてください", "success")
-            return redirect(url_for("user.login"))  # ログインページにリダイレクト
-        else:
-            flash(msg, "error")
-            return render_template("register.html", username=username)
-
-    # GETはフォーム表示
-    return render_template("register.html")
-
-# パスワード変更
-@user_bp.route("/users/me/password", methods=["PATCH"])
-@jwt_required()
-def change_password():
-    data = request.get_json()
-    username = get_jwt_identity()
-    ok, msg = UserService.change_password(username, data["old_password"], data["new_password"])
-    status = 200 if ok else 400
-    return make_response(ok, msg), status
-
-# 削除
-@user_bp.route("/users/<string:target_username>", methods=["DELETE"])
-@jwt_required()
-def delete_user(target_username):
-    claims = get_jwt()
-    current_user = get_jwt_identity()
-    if not claims.get("is_admin") and current_user != target_username:
-        return make_response(False, "権限がありません"), 403
-    ok, msg = UserService.delete_user(target_username)
-    status = 200 if ok else 404
-    return make_response(ok, msg), status
-
-@user_bp.route("/dashboard")
-@jwt_required()
-def dashboard():
-    claims = get_jwt()  # JWTのカスタムクレームから権限取得
-
-    # 権限を持っているドキュメントを読み込む
-    docs_html = []
-    if claims.get("can_arithmetic"):
-        docs_html.append(load_markdown("arithmetic.md"))
-    if claims.get("can_trigonometry"):
-        docs_html.append(load_markdown("trigonometry.md"))
-    if claims.get("can_logarithm"):
-        docs_html.append(load_markdown("logarithm.md"))
-
-    return render_template("dashboard.html", docs_html=docs_html)
-
-def load_markdown(filename):
-    filepath = os.path.join(DOCS_PATH, filename)
-    with open(filepath, "r", encoding="utf-8") as f:
-        md_content = f.read()
-    return markdown.markdown(md_content, extensions=["fenced_code", "tables"])
-
+    )
+    # キャッシュ無効化
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response

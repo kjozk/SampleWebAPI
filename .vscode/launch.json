@@ -1,21 +1,16 @@
 {
-    // IntelliSense を使用して利用可能な属性を学べます。
-    // 既存の属性の説明をホバーして表示します。
-    // 詳細情報は次を確認してください: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python デバッガー: Flask",
+            "name": "Python デバッガー: FastAPI",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/app.py",
+            "program": "${workspaceFolder}/main.py",
             "console": "integratedTerminal",
-            "env": {
-                "FLASK_APP": "app.py",
-                "FLASK_ENV": "development",
-                "FLASK_DEBUG": "1"
-            },
             "args": [],
+            "env": {
+                "UVICORN_RELOAD": "true"
+            },
             "jinja": true
         }
     ]

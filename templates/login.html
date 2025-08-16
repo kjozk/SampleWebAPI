@@ -13,18 +13,26 @@
 <body>
     <h1>ログイン</h1>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <ul>
-          {% for category, message in messages %}
-            <li class="{{ category }}">{{ message }}</li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-    {% endwith %}
+    {% if messages %}
+      <ul>
+        {% for message in messages %}
+          <li>{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    <!-- post("/register")によるエラーメッセージと成功メッセージの表示 -->
+    {% if error %}
+        <p class="error">{{ error }}</p>
+    {% endif %}
+    {% if success %}
+        <p class="success">{{ success }}</p>
+    {% endif %}
+
+
 
     <!-- ログインフォーム -->
-    <form method="post" action="{{ url_for('user.login') }}">
+    <form method="post" action="/login">
         <div>
             <label for="username">ユーザー名:</label><br />
             <input type="text" name="username" id="username" required
@@ -37,6 +45,6 @@
         <button type="submit">ログイン</button>
     </form>
 
-    <p><a href="{{ url_for('user.register_page') }}">新規登録はこちら</a></p>
+    <p><a href="/register">新規登録はこちら</a></p>
 </body>
 </html>

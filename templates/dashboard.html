@@ -18,19 +18,22 @@
     </style>
 </head>
 <body>
-    <h1>{{ username }} さんの情報</h1>
+    <h2>Welcome {{ username }}</h2>
 
-    <h2>保有している権限</h2>
+    <a href="/logout" class="button">ログアウト</a>
+
+    <h3>権限一覧</h3>
     <ul>
-        {% for key, value in permissions.items() %}
-            {% if value %}
-                <li>{{ key }}</li>
-            {% endif %}
-        {% else %}
-            <li>権限なし</li>
-        {% endfor %}
+    {% for perm in permissions %}
+        <li>{{ perm }}</li>
+    {% endfor %}
     </ul>
 
-    <a href="{{ url_for('user.change_password') }}" class="button">パスワード変更</a>
+    <h3>ジョブ管理</h3>
+    <button id="refresh">状態更新</button>
+    <div id="job-list"></div>
+
+
+
 </body>
 </html>

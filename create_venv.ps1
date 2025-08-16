@@ -1,4 +1,4 @@
-﻿# UTF-8にするために chcp 65001 を先頭で実行することを推奨
+﻿# UTF-8 にする
 chcp 65001
 
 $venvName = "venv"
@@ -14,14 +14,15 @@ if (Test-Path $venvName) {
     Write-Host "仮想環境 $venvName を作成しました。"
 }
 
-Write-Host "仮想環境を有効化します..."
-& "$venvName\Scripts\Activate.ps1"
-Write-Host "有効化されました。"
+Write-Host "※仮想環境の有効化はスクリプト実行後に手動で行ってください:"
+Write-Host "    .\$venvName\Scripts\Activate.ps1"
 
 Write-Host "pipを最新にアップグレードします..."
-pip install --upgrade pip
+& "$venvName\Scripts\python.exe" -m pip install --upgrade pip
 
 Write-Host "必要パッケージをインストールします..."
-pip install flask flask_sqlalchemy flask_jwt_extended werkzeug markdown
+& "$venvName\Scripts\python.exe" -m pip install fastapi[all] uvicorn[standard] sqlalchemy alembic python-jose passlib
+& "$venvName\Scripts\python.exe" -m pip install fastapi-users[sqlalchemy]
+& "$venvName\Scripts\python.exe" -m pip install bcrypt==4.0.0
 
 Write-Host "準備完了です。"

@@ -13,17 +13,14 @@
 <body>
     <h1>ユーザー登録</h1>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <ul>
-          {% for category, message in messages %}
-            <li class="{{ category }}">{{ message }}</li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-    {% endwith %}
+    {% if error %}
+        <p class="error">{{ error }}</p>
+    {% endif %}
+    {% if success %}
+        <p class="success">{{ success }}</p>
+    {% endif %}
 
-    <form method="post" action="{{ url_for('user.register_page') }}">
+    <form method="post" action="/register">
         <div>
             <label for="username">ユーザー名:</label><br />
             <input type="text" name="username" id="username" required
@@ -40,6 +37,6 @@
         <button type="submit">登録</button>
     </form>
 
-    <p><a href="{{ url_for('user.login_page') }}">ログインページへ戻る</a></p>
+    <p><a href="/login">ログインページへ戻る</a></p>
 </body>
 </html>

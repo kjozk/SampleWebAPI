@@ -2,15 +2,16 @@
 
 ## 概要
 
-本プロジェクトは、Flaskを使ったユーザー認証・管理APIのサンプル実装です。
+本プロジェクトは、FastAPIを使ったユーザー認証・管理APIのサンプル実装です。
 JWTによる認証と権限管理を備えています。
-主な機能は以下の通りです。
+
+主な機能:
 
 - ユーザー登録
 - ユーザー認証（JWT発行）
 - パスワード変更
 - ユーザー削除（管理者権限または本人のみ）
-- 認証必須の機能API
+- 認証必須の機能API（例: 足し算）
   - 足し算
 
 ## 環境構築
@@ -19,9 +20,13 @@ JWTによる認証と権限管理を備えています。
 
 ### 2. 仮想環境作成（Windows PowerShell例）
 
-```shell
+Windows PowerShell:
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 .\create_venv.ps1
 ```
+
 
 ### 3. 仮想環境有効化
 
@@ -29,6 +34,7 @@ JWTによる認証と権限管理を備えています。
 Windows PowerShell:
 
 ```shell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 .\venv\Scripts\Activate.ps1
 ```
 
@@ -41,7 +47,7 @@ source venv/bin/activate
 ## 実行
 
 ```bash
-python app.py
+uvicorn main:app --reload --host 127.0.0.1 --port 5000
 ```
 
 ## API実行サンプル
@@ -50,17 +56,27 @@ python app.py
 
 Windows PowerShell:
 
-```shell
-Invoke-WebRequest -Uri http://localhost:5000/users `
+```PowerShell
+Invoke-WebRequest -Uri http://127.0.0.1:5000/register `
   -Method POST `
   -Headers @{ "Content-Type" = "application/json" } `
-  -Body '{"username":"testuser", "password":"pass1234", "password2":"pass1234"}'
+  -Body '{
+    "username": "testuser",
+    "password": "pass1234",
+    "password2": "pass1234"
+  }'
 ```
 
 Linux/macOS (bash):
 
 ```bash
-curl -X POST http://localhost:5000/users -H "Content-Type: application/json" -d "{\"username\":\"testuser\", \"password\":\"pass1234\", \"password2\":\"pass1234\"}"
+curl -X POST http://127.0.0.1:5000/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "testuser",
+    "password": "pass1234",
+    "password2": "pass1234"
+  }'
 ```
 
 ### 2. ログイン（認証）
